@@ -3,15 +3,21 @@ import React, { useState, useRef, useEffect } from 'react'
 import TextInput from './components/TextInput.jsx'
 import TextareaInput from './components/TextareaInput.jsx'
 import Dropdown from './components/DropdownInput.jsx'
-
 import Credits from './components/Credits.jsx'
+
+import he from 'he'
 
 function App() {  
   // init form data
-  const [formData, setFormData] = useState({    
+  const [triviaFormData, setTriviaFormData] = useState({    
     category: 9,
     difficulty: 'easy',
     type:'multiple'
+  })
+
+  const [topicFormData, setTopicFormData] = useState({    
+    category: 'Ice Breakers',
+    singleWord: false
   })
 
   const [question, setQuestion] = useState("")
@@ -21,25 +27,92 @@ function App() {
   // handle inputs
   const handleInputChange = (e) => {
     const { name, value, type, files } = e.target;
-    setFormData(prevData => ({
+    setTriviaFormData(prevData => ({
         ...prevData,
         [name]: (type === 'file') ? files[0] : value
       })
     );
   }
 
-  // generate question of the day
-  const handleSubmit = async (e) =>{
+  // unescape characters
+  function unescapeHTML(str) {
+    return he.decode(str)
+  }
+
+  // generate trivia question of the day
+  const handleRandomTrivia = async (e) =>{
     e.preventDefault();
-    console.log('Form submitted:', formData);
+    console.log('Form submitted:', triviaFormData);    
 
     // format url
     const amount = 1
-    const url = `https://opentdb.com/api.php?amount=${amount}&category=${encodeURIComponent(formData.category)}&difficulty=${encodeURIComponent(formData.difficulty)}&type=${encodeURIComponent(formData.type)}`
+    const url = `https://opentdb.com/api.php?amount=${amount}&category=${encodeURIComponent(triviaFormData.category)}&difficulty=${encodeURIComponent(triviaFormData.difficulty)}&type=${encodeURIComponent(triviaFormData.type)}`
     console.log(url)
 
     // get data 
     const response = await (await fetch(url)).json()
+
+
+    // results
+    console.log(response.results)
+
+    // question
+    if(triviaFormData.type == "multiple" && triviaFormData.type != "boolean"){
+      let answers = ["- "+response.results[0].correct_answer]
+      console.log(answers)
+
+      for(let i=0; i<response.results[0].incorrect_answers.length; i++){
+        answers.push("- " + response.results[0].incorrect_answers[i])
+      }      
+
+      // shuffle answers
+      answers = answers.sort(() => Math.random() - 0.5)
+      console.log(answers)
+
+      setQuestion(unescapeHTML(response.results[0].question + "\n\n" + answers.join("\n")))      
+    }else{
+      console.log(response.results[0].question)
+      setQuestion(unescapeHTML(response.results[0].question))
+    }            
+    
+    // answer
+    setAnswer(unescapeHTML(response.results[0].correct_answer))
+    setAnswerVisible(false)
+    
+    
+  }
+
+  // generate random topic
+  const handleRandomTopic = async (e) => {
+    e.preventDefault();
+    console.log('Form submitted:', topicFormData);
+
+    // format url
+    const amount = 1
+    const url = `https://codebeautify.org/randomData`
+    console.log(url)
+
+    // get data 
+    const response = await fetch(url, {
+      "headers": {
+        "accept": "*/*",
+        "accept-language": "en-US,en;q=0.9",
+        "content-type": "application/x-www-form-urlencoded",
+        "priority": "u=1, i",
+        "sec-ch-ua": "\"Not;A=Brand\";v=\"8\", \"Chromium\";v=\"150\", \"Google Chrome\";v=\"150\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": "\"Windows\"",
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-origin"
+      },
+      "referrer": "https://codebeautify.org/random-topic-generator",
+      "body": "type=topic",
+      "method": "POST",
+      "mode": "cors",
+      "credentials": "include"
+    })
+    const responseData = await response.json()
 
 
     // output
@@ -47,7 +120,6 @@ function App() {
     setAnswerVisible(false)
     setQuestion(response.results[0].question)
     setAnswer(response.results[0].correct_answer)
-    
   }
 
   // handle view answer
@@ -55,11 +127,13 @@ function App() {
     setAnswerVisible(true)
   }
 
+  
+
   return (
     <>      
       <div className="main-container">
         <div className="card">
-          <form onSubmit={handleSubmit}> 
+          <form > 
 
             <h1 className="title">Question of the Day!</h1>         
 
@@ -69,7 +143,7 @@ function App() {
                 {/* category */}
                 <Dropdown
                 name="category" 
-                value={formData.category} 
+                value={triviaFormData.category} 
                 onChange={handleInputChange} 
                 options={[                        
                         //{value:"Any Category", label:"Any Category"},
@@ -105,7 +179,7 @@ function App() {
                 {/* difficulty */}
                 <Dropdown
                 name="difficulty" 
-                value={formData.difficulty} 
+                value={triviaFormData.difficulty} 
                 onChange={handleInputChange} 
                 options={[                        
                         //{value:"Any Difficulty", label:"Any Difficulty"},
@@ -121,7 +195,7 @@ function App() {
                 {/* type */}
                 <Dropdown
                 name="type" 
-                value={formData.type} 
+                value={triviaFormData.type} 
                 onChange={handleInputChange} 
                 options={[                        
                         //{value:"Any Type", label:"Any Type"},
@@ -136,7 +210,7 @@ function App() {
                       
             
 
-            <button type="submit" className="btn-submit">Generate Question</button>
+            <button type="button" className="btn-submit" onClick={handleRandomTrivia}>Generate Question</button>
           </form> 
         </div>        
 
