@@ -57,7 +57,7 @@ body{
     border-radius: .5rem;
     box-shadow: 0 5px 10px rgba(0,0,0,.25);
     margin: 1rem 0;
-    /* width: 100%; */
+    min-width: 100%;
 }
 .title{
     text-align: center;
@@ -93,7 +93,7 @@ label{
     font-family: 'Roboto', sans-serif;
     margin: .5rem 0 .15rem 0;
 }
-input, textarea{
+input, textarea, select{
     display: flex;
     padding: .5rem;
     width: calc(100% - 1rem);     

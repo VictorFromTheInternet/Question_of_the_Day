@@ -54,47 +54,79 @@ function App() {
   }
 
   // generate trivia question of the day
-  const handleRandomTrivia = async (e) =>{
+  const handleRandomTrivia = async (e) => {
     e.preventDefault();
     console.log('Form submitted:', triviaFormData);    
 
-    // format url
-    const amount = 1
-    const url = `https://opentdb.com/api.php?amount=${amount}&category=${encodeURIComponent(triviaFormData.category)}&difficulty=${encodeURIComponent(triviaFormData.difficulty)}&type=${encodeURIComponent(triviaFormData.type)}`
-    console.log(url)
+    const amount = 1;
+    const url = `https://opentdb.com/api.php?amount=${amount}&category=${encodeURIComponent(triviaFormData.category)}&difficulty=${encodeURIComponent(triviaFormData.difficulty)}&type=${encodeURIComponent(triviaFormData.type)}`;
+    console.log(url);
 
-    // get data 
-    const response = await (await fetch(url)).json()
+    try {
+      const res = await fetch(url);
+      
+      // Check for HTTP errors (like 429 Too Many Requests)
+      if (res.status === 429) {
+        const rateLimitErr = new Error("Too many requests");
+        rateLimitErr.code = "TOO_MANY_REQUESTS"; // Assigning custom code
+        throw rateLimitErr;
+      }
 
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
 
-    // results
-    console.log(response.results)
+      const response = await res.json();
 
-    // question
-    if(triviaFormData.type == "multiple" && triviaFormData.type != "boolean"){
-      let answers = ["- "+response.results[0].correct_answer]
-      console.log(answers)
+      // OpenTDB specific API response codes (0 = Success, 5 = Rate Limit)
+      if (response.response_code === 5) {
+        const rateLimitErr = new Error("Too many requests");
+        rateLimitErr.code = "TOO_MANY_REQUESTS";
+        throw rateLimitErr;
+      }
 
-      for(let i=0; i<response.results[0].incorrect_answers.length; i++){
-        answers.push("- " + response.results[0].incorrect_answers[i])
-      }      
+      // Ensure we actually have results before processing
+      if (!response.results || response.results.length === 0) {
+        throw new Error("No results found.");
+      }
 
-      // shuffle answers
-      answers = answers.sort(() => Math.random() - 0.5)
-      console.log(answers)
+      const questionData = response.results[0];
+      
+      // Handle "multiple" choice questions
+      if (triviaFormData.type === "multiple") {
+        let answers = ["- " + questionData.correct_answer];
+        
+        for (let i = 0; i < questionData.incorrect_answers.length; i++) {
+          answers.push("- " + questionData.incorrect_answers[i]);
+        }      
 
-      setQuestion(unescapeHTML(response.results[0].question + "\n\n" + answers.join("\n")))      
-    }else{
-      console.log(response.results[0].question)
-      setQuestion(unescapeHTML(response.results[0].question))
-    }            
-    
-    // answer
-    setAnswer(unescapeHTML(response.results[0].correct_answer))
-    setAnswerVisible(false)
-    
-    
-  }
+        // Shuffle answers
+        answers = answers.sort(() => Math.random() - 0.5);
+        setQuestion(unescapeHTML(questionData.question + "\n\n" + answers.join("\n")));      
+      } else {
+        // Handle "boolean" (True/False) questions
+        setQuestion(unescapeHTML(questionData.question));
+      }            
+      
+      // Set Answer
+      setAnswer(unescapeHTML(questionData.correct_answer));
+      setAnswerVisible(false);
+
+    } catch (err) {
+      console.error(err);
+      
+      // Safely check for our custom error code
+      if (err.code === "TOO_MANY_REQUESTS") {
+        setQuestion("Error: too many requests. Please try again shortly.");
+      } else {
+        // Generic fallback for network failures, parsing errors, etc.
+        setQuestion("An error occurred while fetching the trivia question.");
+      }
+      
+      setAnswer("");
+      setAnswerVisible(false);
+    }
+  };
 
   // generate random topic
   const handleRandomTopic = (e) => {
@@ -105,22 +137,28 @@ function App() {
     const amount = 1        
 
     // get filtered data
-    const filteredTopics = TopicsJSON.filter((elm, arr)=>{      
-      const matchesCategory = topicFormData.category === "all" || elm.tags.includes(topicFormData.category);          
-      let matchesSingleWord = true; 
-      if (topicFormData.singleWord === "true") {        
-        matchesSingleWord = elm.tags.includes("single");
-      } 
-      
-      return matchesCategory && matchesSingleWord;
-    })
+    try{
+      const filteredTopics = TopicsJSON.filter((elm, arr)=>{      
+        const matchesCategory = topicFormData.category === "all" || elm.tags.includes(topicFormData.category);          
+        let matchesSingleWord = true; 
+        if (topicFormData.singleWord === "true") {        
+          matchesSingleWord = elm.tags.includes("single");
+        } 
+        
+        return matchesCategory && matchesSingleWord;
+      })                                  
 
 
-    // output
-    console.log(filteredTopics)    
-    const index = Math.floor(Math.random() * filteredTopics.length)
-    console.log(index)
-    setQuestion(filteredTopics[index].name)    
+      // output
+      console.log(filteredTopics)    
+      const index = Math.floor(Math.random() * filteredTopics.length)
+      console.log(index)
+      setQuestion(filteredTopics[index].name)   
+    }catch(err){
+      // output        
+      console.log(err)
+      setQuestion("No relevant question was found")   
+    }     
   }
 
   // handle view answer
@@ -216,11 +254,11 @@ function App() {
                           {value:10, label:"Entertainment: Books"},
                           {value:11, label:"Entertainment: Film"},
                           {value:12, label:"Entertainment: Music"},
-                          {value:13, label:"Entertainment: Musicals &amp; Theatres"},
+                          {value:13, label:"Entertainment: Musicals & Theatres"},
                           {value:14, label:"Entertainment: Television"},
                           {value:15, label:"Entertainment: Video Games"},
                           {value:16, label:"Entertainment: Board Games"},
-                          {value:17, label:"Science &amp; Nature"},
+                          {value:17, label:"Science & Nature"},
                           {value:18, label:"Science: Computers"},
                           {value:19, label:"Science: Mathematics"},
                           {value:20, label:"Mythology"},
@@ -234,8 +272,8 @@ function App() {
                           {value:28, label:"Vehicles"},
                           {value:29, label:"Entertainment: Comics"},
                           {value:20, label:"Science: Gadgets"},
-                          {value:31, label:"Entertainment: Japanese Anime &amp; Manga"},
-                          {value:32, label:"Entertainment: Cartoon &amp; Animations"}
+                          {value:31, label:"Entertainment: Japanese Anime & Manga"},
+                          {value:32, label:"Entertainment: Cartoon & Animations"}
                           ] }                
                   ></Dropdown>
                 </div>
@@ -278,9 +316,9 @@ function App() {
         </div>        
 
         <div className="card">
-          <TextareaInput name="question" id="question" disabled value={question}></TextareaInput>
-          { formType == "trivia" && <button type="button" className="btn-view-answer" onClick={handleViewAnswer}>View Answer</button>}
-          { (formType == "trivia" && answerVisible) && <TextareaInput name="answer" id="answer" disabled={true} value={answer} onChange={(e) => {setAnswer(e.target.value)}}></TextareaInput>}
+          <TextareaInput name="question" id="question" disabled value={question} rows="6"></TextareaInput>
+          { formType == "trivia" && <button type="button" className="btn-view-answer" onClick={handleViewAnswer} >View Answer</button>}
+          { (formType == "trivia" && answerVisible) && <TextareaInput name="answer" id="answer" disabled={true} value={answer}  onChange={(e) => {setAnswer(e.target.value)}} ></TextareaInput>}
         </div>
 
       </div>      

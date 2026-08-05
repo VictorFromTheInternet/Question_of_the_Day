@@ -20,7 +20,8 @@ function TextareaInput(props) {
                     rows={props.rows}   
                     required={props.required}     
                     disabled={props.disabled}      
-                    visible={props.visible}  
+                    visible={props.visible}          
+                        
                     />
         </div>
     )
